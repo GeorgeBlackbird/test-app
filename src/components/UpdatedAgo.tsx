@@ -12,17 +12,19 @@ function secondsSince(since: Date): number {
 
 // Подпись «Обновлено N сек назад».
 export function UpdatedAgo({ since }: Props) {
+  const sinceMs = since.getTime();
   const [seconds, setSeconds] = useState(() => secondsSince(since));
 
   useEffect(() => {
-    setSeconds(secondsSince(since));
+    const at = new Date(sinceMs);
+    setSeconds(secondsSince(at));
 
     const id = setInterval(() => {
-      setSeconds(secondsSince(since));
+      setSeconds(secondsSince(at));
     }, 1000);
 
     return () => clearInterval(id);
-  }, [since]);
+  }, [sinceMs]);
 
   return <Text style={styles.text}>Обновлено {seconds} сек назад</Text>;
 }

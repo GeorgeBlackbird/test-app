@@ -54,3 +54,24 @@ export function filterMatches(matches: Match[], filter: MatchFilter): Match[] {
       return matches;
   }
 }
+
+/** Поиск по названию хозяев или гостей (без учёта регистра). */
+export function searchMatches(matches: Match[], query: string): Match[] {
+  const q = query.trim().toLowerCase();
+  if (!q) {
+    return matches;
+  }
+
+  return matches.filter(
+    (m) =>
+      m.home.name.toLowerCase().includes(q) || m.away.name.toLowerCase().includes(q),
+  );
+}
+
+export function getVisibleMatches(
+  matches: Match[],
+  filter: MatchFilter,
+  query: string,
+): Match[] {
+  return searchMatches(filterMatches(matches, filter), query);
+}

@@ -6,6 +6,7 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { MatchCard } from '../components/MatchCard';
@@ -13,7 +14,7 @@ import { UpdatedAgo } from '../components/UpdatedAgo';
 import { MATCHES_URL } from '../config';
 import { useFavorites } from '../hooks/useFavorites';
 import type { Match, MatchFilter, MatchesResponse } from '../types/matches';
-import { filterMatches } from '../utils/matches';
+import { getVisibleMatches } from '../utils/matches';
 
 const FILTERS: { key: MatchFilter; label: string }[] = [
   { key: 'all', label: 'Все' },
@@ -21,9 +22,24 @@ const FILTERS: { key: MatchFilter; label: string }[] = [
   { key: 'finished', label: 'Завершённые' },
 ];
 
+function emptyMessage(filter: MatchFilter, query: string, totalMatches: number): string {
+  if (query.trim()) {
+    return 'По такому запросу матчей нет — попробуйте другое название клуба.';
+  }
+  if (totalMatches === 0) {
+    return 'В этом туре пока ничего не запланировано.';
+  }
+  if (filter !== 'all') {
+    return 'В этом фильтре пока пусто — попробуйте «Все».';
+  }
+  return 'Матчей нет.';
+}
+
 export function MatchesScreen() {
   const [matches, setMatches] = useState<Match[]>([]);
+  const [round, setRound] = useState<number | null>(null);
   const [filter, setFilter] = useState<MatchFilter>('all');
+  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +63,7 @@ export function MatchesScreen() {
       const data = (await response.json()) as MatchesResponse;
       const list = Array.isArray(data.matches) ? data.matches : [];
       setMatches(list);
+      setRound(typeof data.round === 'number' ? data.round : null);
       setUpdatedAt(new Date());
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Что-то пошло не так';
@@ -61,7 +78,7 @@ export function MatchesScreen() {
     void loadMatches('initial');
   }, [loadMatches]);
 
-  const visible = filterMatches(matches, filter);
+  const visible = getVisibleMatches(matches, filter, query);
 
   if (loading) {
     return (
@@ -86,10 +103,12 @@ export function MatchesScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Матчи тура</Text>
+      <Text style={styles.title}>
+        Матчи тура{round != null ? ` ${round}` : ''}
+      </Text>
 
       <View style={styles.toolbar}>
-        {updatedAt ? <UpdatedAgo since={updatedAt} /> : null}
+        {updatedAt ? <UpdatedAgo since={updatedAt} /> : <View />}
         <Pressable
           style={styles.refreshButton}
           onPress={() => void loadMatches('refresh')}
@@ -100,6 +119,27 @@ export function MatchesScreen() {
         </Pressable>
       </View>
 
+      {error ? (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{error}</Text>
+          <Pressable onPress={() => void loadMatches('refresh')}>
+            <Text style={styles.errorBannerAction}>Повторить</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      <TextInput
+        style={styles.search}
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Поиск по клубу"
+        placeholderTextColor="#9ca3af"
+        autoCorrect={false}
+        autoCapitalize="none"
+        clearButtonMode="while-editing"
+        accessibilityLabel="Поиск матчей по названию клуба"
+      />
+
       <View style={styles.filters}>
         {FILTERS.map((item) => {
           const active = filter === item.key;
@@ -108,6 +148,8 @@ export function MatchesScreen() {
               key={item.key}
               style={[styles.chip, active && styles.chipActive]}
               onPress={() => setFilter(item.key)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
             >
               <Text style={[styles.chipText, active && styles.chipTextActive]}>{item.label}</Text>
             </Pressable>
@@ -118,6 +160,7 @@ export function MatchesScreen() {
       <FlatList
         data={visible}
         keyExtractor={(item) => item.id}
+        keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => (
           <MatchCard
             match={item}
@@ -134,11 +177,7 @@ export function MatchesScreen() {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyTitle}>Матчей нет</Text>
-            <Text style={styles.emptyText}>
-              {filter === 'all'
-                ? 'В этом туре пока ничего не запланировано.'
-                : 'В этом фильтре пока пусто — попробуйте «Все».'}
-            </Text>
+            <Text style={styles.emptyText}>{emptyMessage(filter, query, matches.length)}</Text>
           </View>
         }
         contentContainerStyle={visible.length === 0 ? styles.emptyList : undefined}
@@ -166,7 +205,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 8,
     minHeight: 28,
   },
   refreshButton: {
@@ -177,6 +216,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#2563eb',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    backgroundColor: '#fef2f2',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#991b1b',
+  },
+  errorBannerAction: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2563eb',
+  },
+  search: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: '#111827',
+    marginBottom: 10,
+    backgroundColor: '#fff',
   },
   filters: {
     flexDirection: 'row',
