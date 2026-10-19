@@ -11,6 +11,7 @@ import {
 import { MatchCard } from '../components/MatchCard';
 import { UpdatedAgo } from '../components/UpdatedAgo';
 import { MATCHES_URL } from '../config';
+import { useFavorites } from '../hooks/useFavorites';
 import type { Match, MatchFilter, MatchesResponse } from '../types/matches';
 import { filterMatches } from '../utils/matches';
 
@@ -27,6 +28,7 @@ export function MatchesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const { isFavorite, toggle } = useFavorites();
 
   const loadMatches = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (mode === 'initial') {
@@ -116,7 +118,13 @@ export function MatchesScreen() {
       <FlatList
         data={visible}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <MatchCard match={item} />}
+        renderItem={({ item }) => (
+          <MatchCard
+            match={item}
+            isFavorite={isFavorite(item.id)}
+            onToggleFavorite={() => toggle(item.id)}
+          />
+        )}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

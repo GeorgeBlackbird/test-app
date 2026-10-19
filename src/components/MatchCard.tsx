@@ -1,12 +1,15 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { Match } from '../types/matches';
 import { formatScore, formatStartsAt, statusLabel } from '../utils/matches';
+import { FavoriteButton } from './FavoriteButton';
 
 type Props = {
   match: Match;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
 };
 
-export function MatchCard({ match }: Props) {
+export function MatchCard({ match, isFavorite, onToggleFavorite }: Props) {
   const score = formatScore(match);
   const statusText =
     match.status === 'live' && match.minute != null
@@ -15,10 +18,13 @@ export function MatchCard({ match }: Props) {
 
   return (
     <View style={styles.card}>
-      <View style={styles.teams}>
-        <Text style={styles.team}>{match.home.name}</Text>
-        <Text style={styles.vs}>—</Text>
-        <Text style={styles.team}>{match.away.name}</Text>
+      <View style={styles.header}>
+        <View style={styles.teams}>
+          <Text style={styles.team}>{match.home.name}</Text>
+          <Text style={styles.vs}>—</Text>
+          <Text style={styles.team}>{match.away.name}</Text>
+        </View>
+        <FavoriteButton active={isFavorite} onPress={onToggleFavorite} />
       </View>
 
       {score != null ? <Text style={styles.score}>{score}</Text> : null}
@@ -36,7 +42,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#e5e7eb',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
   teams: {
+    flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',

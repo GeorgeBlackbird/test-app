@@ -4,16 +4,14 @@ import { useState } from 'react';
 export function useFavorites() {
   const [favorites, setFavorites] = useState<string[]>([]);
 
-  const isFavorite = (id: string) => Boolean(favorites.indexOf(id));
+  // includes, а не Boolean(indexOf): у первого элемента index === 0, а Boolean(0) === false.
+  const isFavorite = (id: string) => favorites.includes(id);
 
   const toggle = (id: string) => {
-    const index = favorites.indexOf(id);
-    if (index === -1) {
-      favorites.push(id);
-    } else {
-      favorites.splice(index, 1);
-    }
-    setFavorites(favorites);
+    // Новый массив, иначе React не видит изменения (тот же объект в памяти).
+    setFavorites((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    );
   };
 
   return { favorites, isFavorite, toggle };
